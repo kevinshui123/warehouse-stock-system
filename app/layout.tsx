@@ -15,6 +15,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { SuppressApiErrorOverlay } from "@/components/shared/SuppressApiErrorOverlay";
 import { LanguageProvider } from "@/contexts/language-context";
+import { APP_DISPLAY_NAME } from "@/lib/brand";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -44,11 +45,11 @@ const siteUrl =
 
 export const metadata = {
   title: {
-    default: "Stockly — Warehouse & Stock Inventory Management System",
-    template: "%s | Stockly — Warehouse & Stock Inventory Management System",
+    default: `${APP_DISPLAY_NAME} — Warehouse & Inventory`,
+    template: `%s | ${APP_DISPLAY_NAME}`,
   },
   description:
-    "Stockly is a full-stack warehouse and stock inventory management system built with Next.js. Manage products, categories, suppliers, orders, invoices, and warehouses. Role-based access for admin, client, and supplier. Analytics dashboard, QR codes, export, and secure JWT authentication. By Arnob Mahmud.",
+    `${APP_DISPLAY_NAME}: warehouse and inventory management. Manage products, categories, suppliers, orders, invoices, and warehouses with role-based access.`,
   authors: [
     {
       name: "Arnob Mahmud",
@@ -58,7 +59,7 @@ export const metadata = {
   ],
   creator: "Arnob Mahmud",
   publisher: "Arnob Mahmud",
-  applicationName: "Stockly",
+  applicationName: APP_DISPLAY_NAME,
   keywords: [
     "stock inventory",
     "inventory management",
@@ -86,25 +87,25 @@ export const metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "Stockly — Warehouse & Stock Inventory Management System",
+    title: `${APP_DISPLAY_NAME} — Warehouse & Inventory`,
     description:
-      "Efficiently manage products, orders, invoices, and warehouses with Stockly. Secure, responsive, role-based inventory system. By Arnob Mahmud.",
+      `Manage products, orders, invoices, and warehouses with ${APP_DISPLAY_NAME}.`,
     url: siteUrl,
-    siteName: "Stockly",
+    siteName: APP_DISPLAY_NAME,
     images: [
       {
         url: "/favicon.ico",
         width: 32,
         height: 32,
-        alt: "Stockly — Stock Inventory Management",
+        alt: `${APP_DISPLAY_NAME}`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Stockly — Warehouse & Stock Inventory Management System",
+    title: `${APP_DISPLAY_NAME} — Warehouse & Inventory`,
     description:
-      "Efficiently manage products, orders, invoices, and warehouses. Secure, responsive inventory system. By Arnob Mahmud.",
+      `Manage products, orders, invoices, and warehouses with ${APP_DISPLAY_NAME}.`,
     images: ["/favicon.ico"],
   },
   robots: {

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { APP_DISPLAY_NAME } from "@/lib/brand";
 
 /**
  * Reusable sidebar layout: fixed left sidebar (always visible, no scroll), scrollable right main content.
@@ -64,7 +65,7 @@ export interface SidebarLayoutProps {
 
 export default function SidebarLayout({
   children,
-  sidebarTitle = "Stock Inventory",
+  sidebarTitle = APP_DISPLAY_NAME,
 }: SidebarLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
