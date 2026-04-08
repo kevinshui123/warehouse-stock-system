@@ -121,10 +121,40 @@ export function ProductImportDialog({
 
       invalidateAllRelatedQueries(queryClient);
 
-      toast({
-        title: t("products.importSuccess"),
-        description: t("products.importResultDescription"),
-      });
+      const totalRows = Number(data.totalRows) || 0;
+      const successRows = Number(data.successRows) || 0;
+      const failedRows = Number(data.failedRows) || 0;
+
+      if (successRows > 0 && failedRows === 0) {
+        toast({
+          title: t("products.importSuccess"),
+          description: t("products.importResultDescription", {
+            successRows,
+            failedRows,
+            totalRows,
+          }),
+        });
+      } else if (successRows > 0) {
+        toast({
+          title: t("products.importPartialSuccess"),
+          description: t("products.importResultDescription", {
+            successRows,
+            failedRows,
+            totalRows,
+          }),
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: t("products.importNoRowsImported"),
+          description: t("products.importResultDescription", {
+            successRows,
+            failedRows,
+            totalRows,
+          }),
+          variant: "destructive",
+        });
+      }
 
       // Reset file input
       if (fileInputRef.current) {
@@ -275,7 +305,10 @@ export function ProductImportDialog({
                           key={index}
                           className="text-red-400"
                         >
-                          {t("products.row")} {error.rowNumber}: {error.message}
+                          {t("products.importErrorRow", {
+                            n: error.rowNumber,
+                          })}
+                          : {error.message}
                         </li>
                       ))}
                       {importResult.errors.length > 5 && (

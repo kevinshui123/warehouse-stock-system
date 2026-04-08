@@ -7,6 +7,7 @@
 export {
   productSchema,
   createProductSchema,
+  productImportRowSchema,
   updateProductSchema,
   calculateProductStatus,
   type ProductFormData,

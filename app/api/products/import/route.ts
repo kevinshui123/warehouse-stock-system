@@ -14,8 +14,7 @@ import {
   transformFunctions,
   type ColumnMapping,
 } from "@/lib/import";
-import { createProductSchema } from "@/lib/validations";
-import { z } from "zod";
+import { productImportRowSchema } from "@/lib/validations";
 import {
   createImportHistory,
   updateImportHistory,
@@ -99,7 +98,8 @@ export async function POST(request: NextRequest) {
         {
           importColumn: "Quantity",
           schemaField: "quantity",
-          transform: transformFunctions.toInteger,
+          transform: (value) =>
+            Math.max(0, transformFunctions.toInteger(value)),
         },
         {
           importColumn: "Status",
@@ -178,7 +178,8 @@ export async function POST(request: NextRequest) {
         {
           importColumn: "Quantity",
           schemaField: "quantity",
-          transform: transformFunctions.toInteger,
+          transform: (value) =>
+            Math.max(0, transformFunctions.toInteger(value)),
         },
         {
           importColumn: "Status",
@@ -203,13 +204,10 @@ export async function POST(request: NextRequest) {
         },
       ];
 
-      // Validate rows (without category/supplier lookup)
+      // Validate rows (category/supplier resolved by name after validation)
       const validationResult = validateRows(
         dataRows,
-        createProductSchema.extend({
-          categoryName: z.string().min(1),
-          supplierName: z.string().min(1),
-        }),
+        productImportRowSchema,
         simplifiedMapping,
       );
 

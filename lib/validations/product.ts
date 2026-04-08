@@ -72,6 +72,22 @@ export const createProductSchema = z.object({
 });
 
 /**
+ * One row from CSV/Excel product import (names resolved to IDs after validation)
+ */
+export const productImportRowSchema = z.object({
+  name: z.string().min(1).max(100),
+  sku: z.preprocess(
+    (val) => String(val ?? "").trim().replace(/\s+/g, "-"),
+    z.string().min(1).max(100).regex(/^[a-zA-Z0-9-_]+$/),
+  ),
+  price: z.number().nonnegative(),
+  quantity: z.number().int().nonnegative(),
+  status: z.enum(["Available", "Stock Low", "Stock Out"]),
+  categoryName: z.string().min(1),
+  supplierName: z.string().min(1),
+});
+
+/**
  * Product update input validation schema
  * For API requests
  */
