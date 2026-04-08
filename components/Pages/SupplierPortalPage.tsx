@@ -1,0 +1,542 @@
+"use client";
+
+/**
+ * Supplier Portal Page
+ * Dashboard for suppliers to view their products, orders, and revenue
+ */
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSupplierPortalDashboard } from "@/hooks/queries";
+import { useAuth } from "@/contexts";
+import { useLanguage } from "@/contexts/language-context";
+import {
+  Package,
+  ShoppingCart,
+  DollarSign,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { ResponsiveChartContainer } from "@/components/ui/responsive-chart-container";
+import Navbar from "@/components/layouts/Navbar";
+import { PageContentWrapper } from "@/components/shared";
+import { StatisticsCard } from "@/components/home/StatisticsCard";
+import { StatisticsCardSkeleton } from "@/components/home/StatisticsCardSkeleton";
+import { cn } from "@/lib/utils";
+
+/**
+ * Get order status badge with distinct colors (matches order table/detail)
+ */
+function getStatusBadge(status: string) {
+  const statusStyles: Record<string, string> = {
+    pending:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300/30",
+    confirmed:
+      "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/30",
+    processing:
+      "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300 border-violet-300/30",
+    shipped:
+      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-300/30",
+    delivered:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300/30",
+    cancelled:
+      "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-300/30",
+  };
+  const className =
+    statusStyles[status] ??
+    "bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-300 border-gray-300/30";
+  return (
+    <Badge variant="outline" className={className}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </Badge>
+  );
+}
+
+export default function SupplierPortalPage() {
+  const [mounted, setMounted] = useState(false);
+  const { isCheckingAuth } = useAuth();
+  const { t } = useLanguage();
+  const { data: dashboard, isLoading, isError } = useSupplierPortalDashboard();
+
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
+
+  // Same initial output on server and client to avoid hydration mismatch (React Query state can differ)
+  if (!mounted) {
+    return (
+      <Navbar>
+        <PageContentWrapper>
+          <div className="space-y-6">
+            <Skeleton className="h-12 w-64 rounded-md" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <StatisticsCardSkeleton key={i} />
+              ))}
+            </div>
+            <Skeleton className="h-64 rounded-md" />
+          </div>
+        </PageContentWrapper>
+      </Navbar>
+    );
+  }
+
+  // Show skeleton while auth is resolving or portal data is loading (avoids "Failed to load" on refresh)
+  if (isCheckingAuth || isLoading) {
+    return (
+      <Navbar>
+        <PageContentWrapper>
+          <div className="space-y-6">
+            <Skeleton className="h-12 w-64 rounded-md" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <StatisticsCardSkeleton key={i} />
+              ))}
+            </div>
+            <Skeleton className="h-64 rounded-md" />
+          </div>
+        </PageContentWrapper>
+      </Navbar>
+    );
+  }
+
+  if (isError || !dashboard) {
+    return (
+      <Navbar>
+        <PageContentWrapper>
+          <div className="space-y-6">
+            <h1 className="text-2xl font-semibold text-primary">
+              {t("supplier_portal.supplierPortal")}
+            </h1>
+            <article
+              className={cn(
+                "rounded-[28px] border border-white/10 dark:border-white/20 p-4 sm:p-6 backdrop-blur-sm bg-white/60 dark:bg-white/5 shadow-[0_15px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_30px_80px_rgba(255,255,255,0.08)]",
+              )}
+            >
+              <p className="text-muted-foreground text-center">
+                {isError
+                  ? t("supplier_portal.failedToLoadSupplierDashboard")
+                  : t("supplier_portal.noSupplierDataAvailable")}
+              </p>
+              <div className="flex justify-center mt-4">
+                <Button asChild variant="outline">
+                  <Link href="/">{t("supplier_portal.goToDashboard")}</Link>
+                </Button>
+              </div>
+            </article>
+          </div>
+        </PageContentWrapper>
+      </Navbar>
+    );
+  }
+
+  return (
+    <Navbar>
+      <PageContentWrapper>
+        <div className="space-y-6">
+          <div className="">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+              {t("supplier_portal.supplierPortal")}
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {t("supplier_portal.welcomeMessage", { name: dashboard.supplierName })}
+            </p>
+          </div>
+
+          {/* Summary Cards — supplier's products/orders/revenue only */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <StatisticsCard
+              title={t("supplier_portal.totalProducts")}
+              value={dashboard.totalProducts}
+              description={t("supplier_portal.productsInYourCatalog")}
+              icon={Package}
+              variant="sky"
+              badges={[
+                {
+                  label: t("supplier_portal.available"),
+                  value:
+                    dashboard.productStatusCounts?.available ??
+                    dashboard.totalProducts - dashboard.lowStockProducts.length,
+                },
+                {
+                  label: t("supplier_portal.stockLow"),
+                  value:
+                    dashboard.productStatusCounts?.stockLow ??
+                    dashboard.lowStockProducts.length,
+                },
+                {
+                  label: t("supplier_portal.stockOut"),
+                  value: dashboard.productStatusCounts?.stockOut ?? 0,
+                },
+                {
+                  label: t("supplier_portal.productValue"),
+                  value: `$${(dashboard.productValue ?? 0).toLocaleString(
+                    undefined,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                  )}`,
+                },
+              ]}
+            />
+            <StatisticsCard
+              title={t("supplier_portal.totalOrders")}
+              value={dashboard.totalOrders}
+              description={t("supplier_portal.ordersContainingYourProducts")}
+              icon={ShoppingCart}
+              variant="emerald"
+              badges={[
+                {
+                  label: t("supplier_portal.pending"),
+                  value: dashboard.orderStatusCounts?.pending ?? 0,
+                },
+                {
+                  label: t("supplier_portal.inProgress"),
+                  value: dashboard.orderStatusCounts?.inProgress ?? 0,
+                },
+                {
+                  label: t("supplier_portal.shipped"),
+                  value: dashboard.orderStatusCounts?.shipped ?? 0,
+                },
+                {
+                  label: t("supplier_portal.delivered"),
+                  value: dashboard.orderStatusCounts?.delivered ?? 0,
+                },
+                {
+                  label: t("supplier_portal.refunded"),
+                  value: dashboard.orderStatusCounts?.refunded ?? 0,
+                },
+                {
+                  label: t("supplier_portal.cancelled"),
+                  value: dashboard.orderStatusCounts?.cancelled ?? 0,
+                },
+              ]}
+            />
+            <StatisticsCard
+              title={t("supplier_portal.pendingOrders")}
+              value={dashboard.pendingOrders}
+              description={t("supplier_portal.ordersAwaitingAction")}
+              icon={Clock}
+              variant="amber"
+              badges={[
+                {
+                  label: t("supplier_portal.cancelled"),
+                  value: dashboard.orderStatusCounts?.cancelled ?? 0,
+                },
+                {
+                  label: t("supplier_portal.completed"),
+                  value: dashboard.orderStatusCounts?.completed ?? 0,
+                },
+                {
+                  label: t("supplier_portal.refunded"),
+                  value: dashboard.orderStatusCounts?.refunded ?? 0,
+                },
+                { label: t("supplier_portal.ofTotal"), value: dashboard.totalOrders },
+              ]}
+            />
+            <StatisticsCard
+              title={t("supplier_portal.totalRevenue")}
+              value={`$${(dashboard.totalRevenue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              description={t("supplier_portal.revenueFromYourProductsExclCancelled")}
+              icon={DollarSign}
+              variant="violet"
+              badges={[
+                {
+                  label: t("supplier_portal.paid"),
+                  value: `$${(
+                    dashboard.revenueBreakdown?.paid ?? dashboard.paidRevenue
+                  ).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                },
+                {
+                  label: t("supplier_portal.due"),
+                  value: `$${(
+                    dashboard.revenueBreakdown?.due ?? 0
+                  ).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                },
+                {
+                  label: t("supplier_portal.refund"),
+                  value: `$${(
+                    dashboard.revenueBreakdown?.refund ?? 0
+                  ).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                },
+                {
+                  label: t("supplier_portal.pending"),
+                  value: `$${(
+                    dashboard.revenueBreakdown?.pending ??
+                    dashboard.unpaidRevenue
+                  ).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`,
+                },
+                ...(dashboard.totalOrders > 0
+                  ? [
+                      {
+                        label: t("supplier_portal.avgPerOrder"),
+                        value: `$${(
+                          dashboard.totalRevenue /
+                          Math.max(
+                            1,
+                            dashboard.totalOrders -
+                              (dashboard.orderStatusCounts?.cancelled ?? 0),
+                          )
+                        ).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </div>
+
+          {/* Revenue Chart — glassmorphic card */}
+          {dashboard.monthlyRevenue.length > 0 && (
+            <article
+              className={cn(
+                "rounded-[28px] border border-emerald-400/20 dark:border-emerald-400/30 p-4 sm:p-6 backdrop-blur-sm transition-all",
+                "bg-white/60 dark:bg-white/5",
+                "bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent dark:from-emerald-500/25 dark:via-emerald-500/10 dark:to-emerald-500/5",
+                "shadow-[0_15px_40px_rgba(16,185,129,0.15)] dark:shadow-[0_30px_80px_rgba(16,185,129,0.25)]",
+                "hover:border-emerald-300/40",
+              )}
+            >
+              <div className="mb-4">
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+                  <TrendingUp className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+                  {t("supplier_portal.monthlyRevenue")}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-white/70 mt-1">
+                  {t("supplier_portal.revenueFromYourProductsLast6Months")}
+                </p>
+              </div>
+              <ResponsiveChartContainer>
+                <AreaChart
+                  data={dashboard.monthlyRevenue}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value) => [
+                      `$${Number(value).toLocaleString()}`,
+                      t("supplier_portal.revenue"),
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10b981"
+                    fill="#10b98133"
+                  />
+                </AreaChart>
+              </ResponsiveChartContainer>
+            </article>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Orders — glassmorphic */}
+            <article
+              className={cn(
+                "rounded-[28px] border border-sky-400/20 dark:border-sky-400/30 p-4 sm:p-6 backdrop-blur-sm transition-all",
+                "bg-white/60 dark:bg-white/5",
+                "bg-gradient-to-br from-sky-500/15 via-sky-500/5 to-transparent dark:from-sky-500/25 dark:via-sky-500/10 dark:to-sky-500/5",
+                "shadow-[0_15px_40px_rgba(2,132,199,0.15)] dark:shadow-[0_30px_80px_rgba(2,132,199,0.25)]",
+                "hover:border-sky-300/40",
+              )}
+            >
+              <div className="mb-4">
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+                  <ShoppingCart className="h-5 w-5 text-sky-500 dark:text-sky-400" />
+                  {t("supplier_portal.recentOrders")}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-white/70 mt-1">
+                  {t("supplier_portal.ordersContainingYourProductsShort")}
+                </p>
+              </div>
+              <div>
+                {dashboard.recentOrders.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    {t("supplier_portal.noOrdersYet")}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("supplier_portal.orderNumber")}</TableHead>
+                          <TableHead className="text-right">{t("supplier_portal.revenue")}</TableHead>
+                          <TableHead>{t("common.status")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dashboard.recentOrders.slice(0, 5).map((order) => (
+                          <TableRow key={order.id}>
+                            <TableCell>
+                              <Link
+                                href={`/orders/${order.id}`}
+                                className="text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300"
+                              >
+                                {order.orderNumber}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              ${order.total.toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(order.status)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </article>
+
+            {/* Low Stock Products — glassmorphic */}
+            <article
+              id="products"
+              className={cn(
+                "rounded-[28px] border border-amber-400/20 dark:border-amber-400/30 p-4 sm:p-6 backdrop-blur-sm transition-all",
+                "bg-white/60 dark:bg-white/5",
+                "bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent dark:from-amber-500/25 dark:via-amber-500/10 dark:to-amber-500/5",
+                "shadow-[0_15px_40px_rgba(245,158,11,0.15)] dark:shadow-[0_30px_80px_rgba(245,158,11,0.2)]",
+                "hover:border-amber-300/40",
+              )}
+            >
+              <div className="mb-4">
+                <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+                  {t("supplier_portal.lowStockProducts")}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-white/70 mt-1">
+                  {t("supplier_portal.productsWith20OrFewerUnits")}
+                </p>
+              </div>
+              <div>
+                {dashboard.lowStockProducts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    {t("supplier_portal.allProductsHaveSufficientStock")}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("supplier_portal.product")}</TableHead>
+                          <TableHead className="text-right">
+                            {t("supplier_portal.available")}
+                          </TableHead>
+                          <TableHead>{t("supplier_portal.status")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dashboard.lowStockProducts
+                          .slice(0, 5)
+                          .map((product) => (
+                            <TableRow key={product.id}>
+                              <TableCell>
+                                <Link
+                                  href={`/products/${product.id}`}
+                                  className="text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300"
+                                >
+                                  {product.name}
+                                </Link>
+                                <p className="text-xs text-muted-foreground">
+                                  {product.sku}
+                                </p>
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-red-600">
+                                {product.quantity}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    product.quantity === 0
+                                      ? "destructive"
+                                      : "secondary"
+                                  }
+                                >
+                                  {product.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </article>
+          </div>
+
+          {/* Quick Links — glassmorphic */}
+          <article
+            className={cn(
+              "rounded-[28px] border border-violet-400/20 dark:border-violet-400/30 p-4 sm:p-6 backdrop-blur-sm transition-all",
+              "bg-white/60 dark:bg-white/5",
+              "bg-gradient-to-br from-violet-500/15 via-violet-500/5 to-transparent dark:from-violet-500/25 dark:via-violet-500/10 dark:to-violet-500/5",
+              "shadow-[0_15px_40px_rgba(139,92,246,0.15)] dark:shadow-[0_30px_80px_rgba(139,92,246,0.25)]",
+              "hover:border-violet-300/40",
+            )}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {t("supplier_portal.quickLinks")}
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild variant="outline" className="gap-2">
+                <Link href="/products">
+                  <Package className="h-4 w-4" />
+                  {t("supplier_portal.viewProducts")}
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <Link href="/orders">
+                  <ShoppingCart className="h-4 w-4" />
+                  {t("supplier_portal.viewOrders")}
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <Link href="/">
+                  <TrendingUp className="h-4 w-4" />
+                  {t("nav.dashboard")}
+                </Link>
+              </Button>
+            </div>
+          </article>
+        </div>
+      </PageContentWrapper>
+    </Navbar>
+  );
+}
