@@ -215,8 +215,8 @@ async function main() {
 
     try {
       // Check for duplicate SKU
-      const existing = await prisma.product.findUnique({
-        where: { sku: finalSku },
+      const existing = await prisma.product.findFirst({
+        where: { sku: finalSku, userId },
       });
 
       if (existing) {

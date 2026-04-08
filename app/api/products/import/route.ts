@@ -269,9 +269,9 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Check if SKU already exists
-          const existingProduct = await prisma.product.findUnique({
-            where: { sku: String(rowData.sku) },
+          // Same SKU may exist for another account; only block duplicates for this user
+          const existingProduct = await prisma.product.findFirst({
+            where: { sku: String(rowData.sku), userId },
           });
 
           if (existingProduct) {

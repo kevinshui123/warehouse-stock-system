@@ -127,7 +127,7 @@ model Product {
   price            Float
   quantity         BigInt
   reservedQuantity BigInt      @default(0) // Stock reserved by pending orders (not yet confirmed)
-  sku              String      @unique
+  sku              String // Unique per store owner (see @@unique below)
   status           String
   supplierId       String      @db.ObjectId
   userId           String      @db.ObjectId // Created by user ID
@@ -139,6 +139,8 @@ model Product {
   imageFileId      String? // ImageKit file ID for cleanup when updating/deleting
   expirationDate   DateTime?   @db.Date // Product expiration date (optional, for perishable items)
   orderItems       OrderItem[] // Orders containing this product (one-to-many relationship)
+
+  @@unique([userId, sku])
 }
 
 model Session {
