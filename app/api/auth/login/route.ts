@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { ZodError } from "zod";
 import { generateToken } from "@/utils/auth";
 import { loginSchema } from "@/lib/validations";
 import { createCorsHeaders, handleCorsPreflight } from "@/lib/api/cors";
@@ -17,12 +18,18 @@ import { prisma } from "@/prisma/client";
  * Authenticate user and create session
  */
 export async function POST(request: NextRequest) {
+  const responseHeaders = createCorsHeaders(request);
   try {
-    // Handle CORS
-    const responseHeaders = createCorsHeaders(request);
-
     // Parse and validate request body
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400, headers: responseHeaders },
+      );
+    }
 
     if (!body || typeof body !== "object") {
       return NextResponse.json(
@@ -51,8 +58,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Verify password (bcrypt.compare throws if stored hash is not a valid bcrypt string)
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    } catch (compareErr) {
+      logger.warn("Login bcrypt compare failed (invalid stored hash?)", compareErr);
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401, headers: responseHeaders },
+      );
+    }
 
     if (!isPasswordValid) {
       return NextResponse.json(
@@ -108,28 +124,23 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
+    if (error instanceof ZodError) {
       return NextResponse.json(
         { error: "Invalid email or password format" },
-        { status: 400 },
+        { status: 400, headers: responseHeaders },
       );
     }
 
     logger.error("Login error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 },
+      { status: 500, headers: responseHeaders },
     );
   }
 }
 
 /**
- * OPTIONS /api/auth/login
- * Handle CORS preflight requests
- */
-/**
- * OPTIONS /api/auth/login
- * Handle CORS preflight requests
+ * OPTIONS /api/auth/login — CORS preflight
  */
 export async function OPTIONS(request: NextRequest) {
   return handleCorsPreflight(request);

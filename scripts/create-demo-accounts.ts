@@ -1,18 +1,18 @@
 /**
- * Create Demo Accounts (Client & Supplier)
+ * Create Demo Accounts (Admin, Client & Supplier)
  *
- * Creates two users in the DB for the login dropdown demo. Run this after you
- * have created your own admin account (e.g. via Register). Does not create
- * admin — new signups already get admin role.
+ * Creates users matching the login page dropdown (`LoginPage` testAccounts).
+ * Password for all: 12345678
  *
- * Creates:
- *   - test@client.com  / 12345678  / "Test Client"  / role: client
- *   - test@supplier.com / 12345678 / "Test Supplier" / role: supplier
+ * Creates (if not already present):
+ *   - test@admin.com     / admin
+ *   - test@client.com    / client
+ *   - test@supplier.com  / supplier
  *
- * For the supplier portal to work, links the first existing Supplier to
- * test@supplier.com (or creates a "Demo Supplier" if none exist).
+ * For the supplier portal, links the first existing Supplier to test@supplier.com
+ * (or creates "Demo Supplier" if none exist).
  *
- * Usage (from project root, same DB as app/VPS):
+ * Usage (DATABASE_URL must point at the same MongoDB as production when seeding prod):
  *   npx tsx scripts/create-demo-accounts.ts
  */
 
@@ -24,6 +24,13 @@ const prisma = new PrismaClient();
 const PASSWORD_PLAIN = "12345678";
 
 const DEMO_USERS = [
+  {
+    email: "test@admin.com",
+    name: "Test Admin",
+    username: "testadmin",
+    role: "admin",
+    googleId: "demo-admin",
+  },
   {
     email: "test@client.com",
     name: "Test Client",
@@ -41,7 +48,7 @@ const DEMO_USERS = [
 ] as const;
 
 async function main() {
-  console.log("\n📦 Create demo accounts (client + supplier)\n");
+  console.log("\n📦 Create demo accounts (admin + client + supplier)\n");
 
   const hashedPassword = await bcrypt.hash(PASSWORD_PLAIN, 10);
 
@@ -107,8 +114,8 @@ async function main() {
     }
   }
 
-  console.log("\n   Password for both demo accounts: " + PASSWORD_PLAIN);
-  console.log("   Use the login dropdown to sign in as Admin (your account), Client, or Supplier.\n");
+  console.log("\n   Password for all demo accounts: " + PASSWORD_PLAIN);
+  console.log("   Login page dropdown: Admin / Client / Supplier.\n");
 }
 
 main()

@@ -21,7 +21,8 @@
     "script:backfill-order-stock": "tsx scripts/backfill-order-stock.ts",
     "script:check-order-stock": "tsx scripts/check-order-product-stock.ts",
     "script:fix-product2-stock": "tsx scripts/fix-product2-stock.ts",
-    "script:import-stock-csv": "tsx scripts/import-stock-csv.ts"
+    "script:import-stock-csv": "tsx scripts/import-stock-csv.ts",
+    "script:create-demo-accounts": "tsx scripts/create-demo-accounts.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
