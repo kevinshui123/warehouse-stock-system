@@ -10,7 +10,6 @@ export { default as ProductFormDialog } from "./ProductFormDialog";
 export { default as ProductActions } from "./ProductActions";
 export { DeleteDialog as ProductDeleteDialog } from "./ProductDeleteDialog";
 export { StatusDropDown as StatusFilter } from "./ProductStatusFilter";
-export { columns as productTableColumns } from "./ProductTableColumns";
 
 // Form fields
 export { default as ProductNameField } from "./form-fields/NameField";
