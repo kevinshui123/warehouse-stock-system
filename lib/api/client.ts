@@ -10,6 +10,7 @@ import axios, {
   type AxiosResponse,
 } from "axios";
 import Cookies from "js-cookie";
+import { getApiBaseUrl } from "./get-api-base-url";
 import { API_ENDPOINTS } from "./endpoints";
 import {
   createApiError,
@@ -97,10 +98,7 @@ export interface ApiResponse<T> {
 /** Builds Axios instance with baseURL (/api), credentials, and request/response interceptors. */
 function createAxiosInstance(): AxiosInstance {
   const instance = axios.create({
-    baseURL:
-      process.env.NODE_ENV === "production"
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-        : "http://localhost:3000/api",
+    baseURL: getApiBaseUrl(),
     headers: {
       "Content-Type": "application/json",
     },

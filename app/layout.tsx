@@ -36,6 +36,12 @@ const poppins = Poppins({
 /** Force dynamic rendering for all routes so useSearchParams etc. work without Suspense and pages render instantly. */
 export const dynamic = "force-dynamic";
 
+const siteUrl =
+  (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "") ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000");
+
 export const metadata = {
   title: {
     default: "Stockly — Warehouse & Stock Inventory Management System",
@@ -76,16 +82,14 @@ export const metadata = {
     apple: "/favicon.ico",
     other: [{ rel: "icon", url: "/favicon.ico" }],
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://stockly-inventory.vercel.app",
-  ),
+  metadataBase: new URL(siteUrl),
   openGraph: {
     type: "website",
     locale: "en_US",
     title: "Stockly — Warehouse & Stock Inventory Management System",
     description:
       "Efficiently manage products, orders, invoices, and warehouses with Stockly. Secure, responsive, role-based inventory system. By Arnob Mahmud.",
-    url: "https://stockly-inventory.vercel.app",
+    url: siteUrl,
     siteName: "Stockly",
     images: [
       {

@@ -6,26 +6,31 @@
 
 import type { NextRequest } from "next/server";
 
-/**
- * Production URL
- */
-const PRODUCTION_URL = "https://stockly-inventory.vercel.app";
+function normalizeOrigin(url: string): string {
+  return url.trim().replace(/\/$/, "");
+}
+
+function productionOrigins(): string[] {
+  const fromEnv = [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_API_URL]
+    .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+    .map(normalizeOrigin);
+  if (fromEnv.length > 0) return fromEnv;
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) return [`https://${vercel}`];
+  return [];
+}
 
 /**
  * Check if an origin is allowed for CORS
- * Allows localhost for development and production URL for production
- * @param origin - The origin header from the request
- * @returns true if origin is allowed, false otherwise
+ * Allows localhost for development and configured production origins
  */
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
 
-  // Allow production URL
-  if (origin === PRODUCTION_URL) {
-    return true;
+  for (const allowed of productionOrigins()) {
+    if (origin === allowed) return true;
   }
 
-  // Allow localhost for development (any port)
   if (process.env.NODE_ENV === "development") {
     const localhostRegex = /^https?:\/\/localhost(:\d+)?$/;
     if (localhostRegex.test(origin)) {
@@ -38,15 +43,13 @@ export function isAllowedOrigin(origin: string | null): boolean {
 
 /**
  * Get the allowed origin for CORS response
- * Returns the origin if allowed, otherwise returns production URL
- * @param origin - The origin header from the request
- * @returns The allowed origin string
  */
 export function getAllowedOrigin(origin: string | null): string {
   if (origin && isAllowedOrigin(origin)) {
     return origin;
   }
-  return PRODUCTION_URL;
+  const list = productionOrigins();
+  return list[0] ?? "";
 }
 
 /**

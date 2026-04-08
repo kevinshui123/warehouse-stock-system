@@ -1,11 +1,9 @@
 import axios from "axios";
 import Cookies from "js-cookie";
+import { getApiBaseUrl } from "@/lib/api/get-api-base-url";
 
 const axiosInstance = axios.create({
-  baseURL:
-    process.env.NODE_ENV === "production"
-      ? "https://stockly-inventory.vercel.app/api" // Production URL
-      : "http://localhost:3000/api", // Localhost for development
+  baseURL: getApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
