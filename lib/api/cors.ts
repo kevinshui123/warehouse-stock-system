@@ -42,14 +42,30 @@ export function isAllowedOrigin(origin: string | null): boolean {
 }
 
 /**
- * Get the allowed origin for CORS response
+ * Resolve CORS Allow-Origin value. Never returns "" (invalid with credentials).
+ * If env allow-list misses the browser Origin but request is same-origin as this API, reflect Origin.
  */
-export function getAllowedOrigin(origin: string | null): string {
-  if (origin && isAllowedOrigin(origin)) {
-    return origin;
+export function getAllowedOrigin(
+  request: NextRequest,
+  originHeader: string | null,
+): string | null {
+  if (originHeader && isAllowedOrigin(originHeader)) {
+    return originHeader;
   }
   const list = productionOrigins();
-  return list[0] ?? "";
+  if (list[0]) return list[0];
+
+  if (originHeader) {
+    try {
+      const apiOrigin = new URL(request.url).origin;
+      if (originHeader === apiOrigin) {
+        return originHeader;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
 }
 
 /**
@@ -58,16 +74,20 @@ export function getAllowedOrigin(origin: string | null): string {
  * @returns Headers object with CORS configuration
  */
 export function createCorsHeaders(request: NextRequest): Headers {
-  const origin = request.headers.get("origin");
+  const originHeader = request.headers.get("origin");
   const headers = new Headers();
+  const allow = getAllowedOrigin(request, originHeader);
 
-  headers.set("Access-Control-Allow-Origin", getAllowedOrigin(origin));
+  if (allow) {
+    headers.set("Access-Control-Allow-Origin", allow);
+    headers.set("Access-Control-Allow-Credentials", "true");
+  }
+
   headers.set(
     "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
+    "GET, POST, PUT, DELETE, OPTIONS",
   );
   headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  headers.set("Access-Control-Allow-Credentials", "true");
 
   return headers;
 }

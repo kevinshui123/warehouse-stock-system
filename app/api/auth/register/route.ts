@@ -11,6 +11,8 @@ import { registerSchema } from "@/lib/validations";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/prisma/client";
 
+export const runtime = "nodejs";
+
 /**
  * Attempt to insert a user document. If a non-sparse unique index on
  * `googleId` blocks the insert (E11000 dup key: { googleId: null }),

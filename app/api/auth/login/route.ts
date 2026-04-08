@@ -6,12 +6,16 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { generateToken } from "@/utils/auth";
 import { loginSchema } from "@/lib/validations";
 import { createCorsHeaders, handleCorsPreflight } from "@/lib/api/cors";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/prisma/client";
+
+/** Prisma + bcrypt + jsonwebtoken require Node (not Edge). */
+export const runtime = "nodejs";
 
 /**
  * POST /api/auth/login
@@ -84,12 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate token
-    const token = generateToken(user.id);
-
-    if (!token) {
+    let token: string;
+    try {
+      token = generateToken(user.id);
+    } catch (jwtErr) {
+      logger.error("Login JWT sign failed:", jwtErr);
       return NextResponse.json(
-        { error: "Failed to generate session token" },
+        { error: "Failed to create session" },
         { status: 500, headers: responseHeaders },
       );
     }
@@ -128,6 +133,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Invalid email or password format" },
         { status: 400, headers: responseHeaders },
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientInitializationError ||
+      (error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P1001" || error.code === "P1017"))
+    ) {
+      logger.error("Login database connection error:", error);
+      return NextResponse.json(
+        {
+          error:
+            "Database unavailable. Add DATABASE_URL in Vercel → Settings → Environment Variables (Production).",
+        },
+        { status: 503, headers: responseHeaders },
       );
     }
 
