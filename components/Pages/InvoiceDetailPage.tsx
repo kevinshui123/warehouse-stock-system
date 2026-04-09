@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import InvoiceDialog from "@/components/invoices/InvoiceDialog";
 import { AlertDialogWrapper } from "@/components/dialogs";
 import { PaymentDialog } from "@/components/payments";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Color variants for glassmorphic cards
@@ -248,8 +249,10 @@ export default function InvoiceDetailPage({
     : handleBack;
   const Wrapper = embedInAdmin ? React.Fragment : Navbar;
   const { user, isCheckingAuth } = useAuth();
+  const { toast } = useToast();
   const isMountedRef = useRef(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   // Fetch invoice details
   const { data: invoice, isLoading, isError, error } = useInvoice(invoiceId);
@@ -310,6 +313,60 @@ export default function InvoiceDetailPage({
     setEditingInvoice(invoice);
     setEditDialogOpen(true);
   }, [invoice]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!invoice) return;
+    setPdfDownloading(true);
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/pdf`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        let message = "Could not download the PDF.";
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (data?.error) message = data.error;
+        } catch {
+          if (res.statusText) message = res.statusText;
+        }
+        toast({
+          variant: "destructive",
+          title: "Download failed",
+          description: message,
+        });
+        return;
+      }
+      const contentType = res.headers.get("Content-Type") || "";
+      if (!contentType.includes("application/pdf")) {
+        toast({
+          variant: "destructive",
+          title: "Download failed",
+          description: "The server did not return a PDF file.",
+        });
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `invoice-${invoice.invoiceNumber}.pdf`;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Download failed",
+        description:
+          e instanceof Error ? e.message : "Network error. Please try again.",
+      });
+    } finally {
+      setPdfDownloading(false);
+    }
+  }, [invoice, toast]);
 
   const handleConfirmDeleteInvoice = useCallback(() => {
     if (!invoice) return;
@@ -936,16 +993,13 @@ export default function InvoiceDetailPage({
               Edit Invoice
             </Button>
             <Button
-              asChild
-              className="w-full sm:w-auto gap-2 rounded-xl border border-teal-400/30 bg-gradient-to-r from-teal-500/70 via-teal-500/50 to-teal-500/30 text-white shadow-[0_10px_25px_rgba(20,184,166,0.35)] backdrop-blur-sm hover:border-teal-300/50 hover:from-teal-500/80 hover:via-teal-500/60 hover:to-teal-500/40 transition-all duration-300"
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={pdfDownloading}
+              className="w-full sm:w-auto gap-2 rounded-xl border border-teal-400/30 bg-gradient-to-r from-teal-500/70 via-teal-500/50 to-teal-500/30 text-white shadow-[0_10px_25px_rgba(20,184,166,0.35)] backdrop-blur-sm hover:border-teal-300/50 hover:from-teal-500/80 hover:via-teal-500/60 hover:to-teal-500/40 transition-all duration-300 disabled:opacity-50"
             >
-              <a
-                href={`/api/invoices/${invoice.id}/pdf`}
-                download={`invoice-${invoice.invoiceNumber}.pdf`}
-              >
-                <Download className="h-4 w-4 shrink-0" />
-                Download PDF
-              </a>
+              <Download className="h-4 w-4 shrink-0" />
+              {pdfDownloading ? "Preparing PDF…" : "Download PDF"}
             </Button>
             {invoice.status === "draft" && (
               <Button

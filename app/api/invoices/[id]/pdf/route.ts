@@ -7,8 +7,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/utils/auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/prisma/client";
-import { generateInvoicePDF } from "@/lib/pdf";
+import { generateInvoicePDFBuffer } from "@/lib/pdf";
 import { withRateLimit, defaultRateLimits } from "@/lib/api/rate-limit";
+
+/** Allow longer PDF generation on Vercel (Pro / configurable). */
+export const maxDuration = 60;
 
 /**
  * GET /api/invoices/[id]/pdf
@@ -144,20 +147,16 @@ export async function GET(
       companyEmail: getConfig("company_email") || undefined,
     };
 
-    // Generate PDF
-    const pdfDataUri = generateInvoicePDF(pdfData);
+    const pdfBuffer = generateInvoicePDFBuffer(pdfData);
+    const safeName = `invoice-${invoice.invoiceNumber.replace(/[^\w.-]+/g, "_")}.pdf`;
 
-    // Extract base64 data
-    const base64Data = pdfDataUri.split(",")[1] || "";
-    const pdfBuffer = Buffer.from(base64Data, "base64");
-
-    // Return PDF as download
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="sales-order-${order.orderNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="${safeName}"`,
         "Content-Length": pdfBuffer.length.toString(),
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {
