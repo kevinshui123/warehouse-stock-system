@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import InvoiceDialog from "@/components/invoices/InvoiceDialog";
 import { AlertDialogWrapper } from "@/components/dialogs";
 import { PaymentDialog } from "@/components/payments";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 /**
  * Color variants for glassmorphic cards
@@ -249,10 +249,10 @@ export default function InvoiceDetailPage({
     : handleBack;
   const Wrapper = embedInAdmin ? React.Fragment : Navbar;
   const { user, isCheckingAuth } = useAuth();
-  const { toast } = useToast();
   const isMountedRef = useRef(false);
   const [isMounted, setIsMounted] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
 
   // Fetch invoice details
   const { data: invoice, isLoading, isError, error } = useInvoice(invoiceId);
@@ -314,9 +314,19 @@ export default function InvoiceDetailPage({
     setEditDialogOpen(true);
   }, [invoice]);
 
+  const showPdfFailure = useCallback((message: string) => {
+    setPdfDownloadError(message);
+    toast({
+      variant: "destructive",
+      title: "Download failed",
+      description: message,
+    });
+  }, []);
+
   const handleDownloadPdf = useCallback(async () => {
     if (!invoice) return;
     setPdfDownloading(true);
+    setPdfDownloadError(null);
     try {
       const res = await fetch(`/api/invoices/${invoice.id}/pdf`, {
         method: "GET",
@@ -330,23 +340,32 @@ export default function InvoiceDetailPage({
         } catch {
           if (res.statusText) message = res.statusText;
         }
-        toast({
-          variant: "destructive",
-          title: "Download failed",
-          description: message,
-        });
+        showPdfFailure(message);
         return;
       }
       const contentType = res.headers.get("Content-Type") || "";
       if (!contentType.includes("application/pdf")) {
-        toast({
-          variant: "destructive",
-          title: "Download failed",
-          description: "The server did not return a PDF file.",
-        });
+        showPdfFailure(
+          "The server did not return a PDF (wrong Content-Type).",
+        );
         return;
       }
       const blob = await res.blob();
+      const headBuf = await blob.slice(0, 5).arrayBuffer();
+      const head = new TextDecoder("latin1").decode(headBuf);
+      if (!head.startsWith("%PDF")) {
+        let message =
+          "The response was not a valid PDF file. Try “Open in new tab” below.";
+        try {
+          const text = await blob.text();
+          const j = JSON.parse(text) as { error?: string };
+          if (j?.error) message = j.error;
+        } catch {
+          /* keep default */
+        }
+        showPdfFailure(message);
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -357,16 +376,26 @@ export default function InvoiceDetailPage({
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Download failed",
-        description:
-          e instanceof Error ? e.message : "Network error. Please try again.",
-      });
+      showPdfFailure(
+        e instanceof Error ? e.message : "Network error. Please try again.",
+      );
     } finally {
       setPdfDownloading(false);
     }
-  }, [invoice, toast]);
+  }, [invoice, showPdfFailure]);
+
+  const handleOpenPdfInTab = useCallback(() => {
+    if (!invoice) return;
+    setPdfDownloadError(null);
+    window.open(`/api/invoices/${invoice.id}/pdf`, "_blank", "noopener,noreferrer");
+  }, [invoice]);
+
+  const handleOpenPdfInNewTab = useCallback(() => {
+    if (!invoice) return;
+    setPdfDownloadError(null);
+    const path = `/api/invoices/${invoice.id}/pdf`;
+    window.open(path, "_blank", "noopener,noreferrer");
+  }, [invoice]);
 
   const handleConfirmDeleteInvoice = useCallback(() => {
     if (!invoice) return;
@@ -1001,6 +1030,19 @@ export default function InvoiceDetailPage({
               <Download className="h-4 w-4 shrink-0" />
               {pdfDownloading ? "Preparing PDF…" : "Download PDF"}
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleOpenPdfInTab}
+              className="w-full sm:w-auto gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-teal-500 dark:hover:text-teal-400 transition-colors px-1 py-0 h-auto"
+            >
+              Open in new tab
+            </Button>
+            {pdfDownloadError && (
+              <div className="w-full rounded-lg border border-rose-400/40 bg-rose-50/60 dark:bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-300">
+                {pdfDownloadError}
+              </div>
+            )}
             {invoice.status === "draft" && (
               <Button
                 onClick={() => setSendDialogOpen(true)}

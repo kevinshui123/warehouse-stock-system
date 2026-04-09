@@ -10,6 +10,9 @@ import { prisma } from "@/prisma/client";
 import { generateInvoicePDFBuffer } from "@/lib/pdf";
 import { withRateLimit, defaultRateLimits } from "@/lib/api/rate-limit";
 
+/** Prisma + Buffer + jsPDF require Node (not Edge). */
+export const runtime = "nodejs";
+
 /** Allow longer PDF generation on Vercel (Pro / configurable). */
 export const maxDuration = 60;
 
