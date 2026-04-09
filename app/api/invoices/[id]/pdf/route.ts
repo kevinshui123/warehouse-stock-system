@@ -48,7 +48,9 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Get client info if available
+    const order = invoice.order;
+
+    // Client name
     let clientName = "Customer";
     if (invoice.clientId) {
       const client = await prisma.user.findUnique({
@@ -58,13 +60,31 @@ export async function GET(
       clientName = client?.username || client?.email || "Customer";
     }
 
-    // Prepare PDF data
+    // Supplier info (seller — from the store owner user who owns the order)
+    const orderOwner = await prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { name: true, email: true, username: true },
+    });
+    const supplierName = orderOwner?.name || orderOwner?.username || "Supplier";
+
+    // System config for company info
+    const configs = await prisma.systemConfig.findMany({
+      where: { isPublic: true },
+    });
+    const getConfig = (key: string) =>
+      configs.find((c) => c.key === key)?.value;
+
+    // Build PDF data
     const pdfData = {
+      // 单据编号
       invoiceNumber: invoice.invoiceNumber,
+      orderNumber: order.orderNumber,
       status: invoice.status,
       issuedAt: invoice.issuedAt,
       dueDate: invoice.dueDate,
       paidAt: invoice.paidAt,
+
+      // 金额
       subtotal: invoice.subtotal,
       tax: invoice.tax,
       shipping: invoice.shipping,
@@ -72,6 +92,13 @@ export async function GET(
       total: invoice.total,
       amountPaid: invoice.amountPaid,
       amountDue: invoice.amountDue,
+
+      // 供应商 / FROM
+      supplierName,
+      supplierPhone: getConfig("company_phone") || undefined,
+      supplierAddress: getConfig("company_address") || undefined,
+
+      // 地址
       clientName,
       billingAddress: invoice.billingAddress as {
         name?: string;
@@ -81,15 +108,40 @@ export async function GET(
         zipCode?: string;
         country?: string;
       } | null,
+      shippingAddress: order.shippingAddress as {
+        name?: string;
+        street?: string;
+        city?: string;
+        state?: string;
+        zipCode?: string;
+        country?: string;
+      } | null,
+
+      // 商品明细（带 unit）
       items:
-        invoice.order?.items.map((item) => ({
+        order.items.map((item) => ({
           productName: item.productName,
           sku: item.sku,
           quantity: item.quantity,
           price: item.price,
           subtotal: item.subtotal,
+          // unit 默认 UNIT；后续可在 Product 模型增加 unit 字段后改为动态值
+          unit: "UNIT",
         })) || [],
+
+      // 附加信息
       notes: invoice.notes,
+      terms: getConfig("default_terms") || "Due on Receipt",
+      shipVia: undefined,
+      shipDate: order.shippedAt || undefined,
+      salesperson: undefined,
+      customerPO: undefined,
+
+      // 公司信息（用于 PDF 顶部公司条）
+      companyName: getConfig("company_name") || undefined,
+      companyAddress: getConfig("company_address") || undefined,
+      companyPhone: getConfig("company_phone") || undefined,
+      companyEmail: getConfig("company_email") || undefined,
     };
 
     // Generate PDF
@@ -104,7 +156,7 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="sales-order-${order.orderNumber}.pdf"`,
         "Content-Length": pdfBuffer.length.toString(),
       },
     });
