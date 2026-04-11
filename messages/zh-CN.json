@@ -848,7 +848,9 @@
     "failedToGenerateInsights": "生成洞察失败",
     "aiInsightsGenerated": "AI 洞察已生成",
     "recommendationsAreReady": "推荐已准备就绪。",
-    "networkErrorPleaseTryAgain": "网络错误,请重试。"
+    "networkErrorPleaseTryAgain": "网络错误,请重试。",
+    "ordersRevenueOverTime": "订单营收",
+    "invoicesLabel": "发票"
   },
   "client": {
     "clientPortal": "客户门户",
