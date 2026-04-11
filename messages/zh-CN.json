@@ -871,6 +871,7 @@
     "outstanding": "待结金额",
     "unpaidInvoiceBalance": "未付发票余额",
     "allPaid": "已全部付清",
+    "status": "状态",
     "invoicesPaid": "已付发票",
     "totalInvoices": "发票总数",
     "monthlySpending": "月度支出",
