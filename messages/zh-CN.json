@@ -43,7 +43,8 @@
     "noData": "暂无数据",
     "noResults": "未找到结果",
     "ascending": "升序",
-    "descending": "降序"
+    "descending": "降序",
+    "products": "产品"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -345,7 +346,9 @@
     "amountDue": "应付金额",
     "draft": "草稿",
     "sent": "已发送",
+    "paid": "已支付",
     "overdue": "已逾期",
+    "cancelled": "已取消",
     "markAsSent": "标记为已发送",
     "markAsPaid": "标记为已支付",
     "cancelInvoice": "取消发票",
@@ -754,7 +757,20 @@
       "demandForecastingPredictions": "需求预测与展望",
       "confirm": "已确认",
       "refundedCount": "已退款",
-      "cancelledCount": "已取消"
+      "cancelledCount": "已取消",
+      "orderRevenueExclCancelledTooltip": "订单营收(不含已取消)",
+      "ordersTooltip": "订单",
+      "orderStatusDistributionChart": "订单状态分布",
+      "invoiceStatusDistributionChart": "发票状态分布",
+      "warehousesByTypeChart": "按类型分类的仓库",
+      "storeWideChart": "全店",
+      "topProductsByOrdersChart": "订单最多的产品",
+      "noOrderDataYetChart": "暂无订单数据",
+      "productChart": "产品",
+      "linesChart": "明细",
+      "qtyChart": "数量",
+      "revenueChart": "营收",
+      "warehousesTooltip": "仓库"
     }
   },
   "insights": {
